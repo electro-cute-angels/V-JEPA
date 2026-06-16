@@ -3,15 +3,7 @@ cd "/home/riccardo/Desktop/V-JEPA 2.1/vjepa_experiments"
 source ../venv/bin/activate
 
 # 2. Clear old outputs (run this if you changed images or want a fresh run)
-rm -f outputs/embeddings/corpus_embeddings.npz \
-       outputs/similarity/corpus_similarity_matrix.npz \
-       outputs/similarity/corpus_similarity_heatmap_clustered.png \
-       outputs/similarity/corpus_similarity_heatmap_raw.png \
-       outputs/similarity/cluster_order.npy \
-       outputs/heatmaps/*_attn.png \
-       outputs/heatmaps/corpus_attention_grid.png \
-       outputs/heatmaps_layerwise/*.png \
-       outputs/errors.log
+find outputs/ -type f ! -name ".gitkeep" -delete && echo "Outputs cleared."
 
 # 3. Run the full pipeline (embed → similarity → heatmaps → layer-wise)
 python3 -c "
