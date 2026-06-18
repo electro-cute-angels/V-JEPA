@@ -1,3 +1,75 @@
+Generate UMAP Coordinates from Corpus Embeddings
+
+---
+
+## CONTEXT
+
+The corpus embeddings already exist from Phase 1. This prompt produces UMAP 2D coordinates.
+
+---
+
+## INPUT (already exists)
+
+```
+outputs/embeddings/corpus_embeddings.npz  # contains 'embeddings' (N, 1408) and 'image_paths' (N,)
+```
+
+---
+
+## TASK
+
+Write `generate_umap.py` that:
+
+1. Loads `corpus_embeddings.npz`
+2. L2-normalizes the embeddings if not already unit norm
+3. Fits UMAP with:
+   ```python
+   umap.UMAP(n_components=2, n_neighbors=15, min_dist=0.1, metric='cosine', random_state=42)
+   ```
+4. Saves to `outputs/visualizations/corpus_umap_coords.npz`:
+   - `umap_x`: float32 array shape (N,)
+   - `umap_y`: float32 array shape (N,)
+   - `image_paths`: same order as input embeddings
+5. Produces a quick static sanity-check plot `outputs/visualizations/corpus_umap_static.png`:
+   - scatter plot of all points
+   - colored by category (inferred from parent subdirectory name)
+   - each point labeled with filename (only if N < 50, otherwise skip labels)
+   - legend showing category colors
+
+## DEPENDENCY
+
+```
+pip install umap-learn
+```
+
+## CHECKPOINT
+
+Print: number of points, UMAP coordinate ranges (min/max x and y), confirm `corpus_umap_coords.npz` written. Open the PNG and verify points are not all collapsed to a single location.
+
+## DELIVERABLES
+
+```
+outputs/visualizations/
+├── corpus_umap_coords.npz
+└── corpus_umap_static.png
+```
+
+Report file sizes and stop.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 # Coding Agent Prompt — D3.js Embedding Space Visualizer
 ## Phase 1 Add-on: Interactive Similarity Graph
 
@@ -5,7 +77,7 @@
 
 ## CONTEXT
 
-This adds a single interactive D3.js visualization to the existing Phase 1 pipeline. All input data is already produced by Phase 1 — no new model inference required. The output is one self-contained HTML file served locally.
+This adds a single interactive D3.js visualization to the existing pipeline (so it is something that would need to run wen i run run_all.py along with the rest). All input data is already produced no new model inference required. The output is one self-contained HTML file served locally.
 
 ---
 
