@@ -1,0 +1,126 @@
+# Coding Agent Prompt — D3.js Embedding Space Visualizer
+## Phase 1 Add-on: Interactive Similarity Graph
+
+---
+
+## CONTEXT
+
+This adds a single interactive D3.js visualization to the existing Phase 1 pipeline. All input data is already produced by Phase 1 — no new model inference required. The output is one self-contained HTML file served locally.
+
+---
+
+## INPUTS (already exist from Phase 1)
+
+```
+outputs/embeddings/corpus_embeddings.npz       # (N, 1408) embeddings + image_paths
+outputs/similarity/corpus_similarity_matrix.npz # (N, N) cosine similarity matrix
+outputs/visualizations/corpus_umap_coords.npz  # (N, 2) UMAP coordinates
+outputs/motion_scores_corpus.csv               # signal1_z, signal2_z per image (if Phase 1b is done — optional, skip gracefully if absent)
+```
+
+---
+
+## STEP 1 — Python export script: `export_d3_data.py`
+
+Reads the Phase 1 outputs and produces two JSON files + the HTML app.
+
+```python
+export_d3_data(
+    similarity_threshold=0.6,  # minimum similarity to draw an edge
+    thumbnail_size=64,         # px, images encoded as base64 in nodes.json
+    output_dir=Path("outputs/d3_viz")
+)
+```
+
+Produces:
+
+**`nodes.json`** — one entry per image:
+```json
+[{
+  "id": "rubens_01.jpg",
+  "thumbnail": "data:image/jpeg;base64,...",
+  "category": "A",
+  "umap_x": 2.34,
+  "umap_y": -1.12,
+  "signal1_z": 1.8,
+  "signal2_z": 0.9
+}]
+```
+Category is inferred from the image's parent subdirectory name. If no subdirectory structure exists, set category to `"unknown"` for all.
+Signal scores are read from `motion_scores_corpus.csv` if present; set to `0` if absent.
+
+**`edges.json`** — one entry per pair above threshold:
+```json
+[{
+  "source": "rubens_01.jpg",
+  "target": "rubens_03.jpg",
+  "similarity": 0.91
+}]
+```
+Only store pairs where similarity >= `similarity_threshold`. Cap at 2000 edges maximum (take top-2000 by similarity if exceeded).
+
+---
+
+## STEP 2 — D3.js app: `index.html`
+
+Single self-contained HTML file in `outputs/d3_viz/`. Loads D3 v7 from CDN. Fetches `nodes.json` and `edges.json` via `fetch()`.
+
+**Layout:** Three panels:
+
+```
+┌──────────────────────────┬───────────────┐
+│  MAIN CANVAS             │ DETAIL PANEL  │
+│  (force graph or UMAP)   │               │
+│  image nodes + edges     │ clicked image │
+│                          │ + top-5       │
+│                          │ neighbors     │
+├──────────────────────────┴───────────────┤
+│ CONTROLS                                  │
+│ [Force | UMAP]  threshold slider  color  │
+└───────────────────────────────────────────┘
+```
+
+**Nodes:** render as `<image>` elements using the base64 thumbnail, 48×48px. Border color = category (A=red, B=blue, C=green, unknown=gray).
+
+**Edges:** `<line>` elements, opacity and stroke-width proportional to similarity score.
+
+**Controls:**
+- **Layout toggle** — switches node positions between force-directed simulation and UMAP coordinates. Animate the transition with `d3.transition()` over 800ms.
+- **Threshold slider** — range 0.5–1.0, step 0.01. Updates edge visibility in real time without rerunning the simulation.
+- **Color by** — dropdown: `category` / `signal1_z` / `signal2_z`. For signal scores use a `coolwarm` diverging colormap centered at 0.
+- **Node size** — toggle: uniform 48px / scaled by `signal1_z`.
+
+**Interactions:**
+- **Hover** → highlight node border white, highlight its direct neighbor edges in yellow, show tooltip with image name + scores.
+- **Click** → lock detail panel: show full-size image (256px), list top-5 nearest neighbors as thumbnails with similarity scores. Nearest neighbors are computed client-side from edges.json — just sort edges by similarity for the clicked node.
+- **Drag nodes** → standard D3 force drag behavior.
+
+**Force simulation settings:**
+- Link force: strength = edge similarity score
+- Charge force: repulsion -80
+- Initial node positions: UMAP coordinates (so the force simulation starts from a meaningful state rather than random)
+- Run simulation for 300 ticks on load, then allow live interaction
+
+---
+
+## STEP 3 — Serve instructions
+
+Print to stdout after generation:
+```
+D3 visualization ready.
+To view: cd outputs/d3_viz && python -m http.server 8000
+Then open: http://localhost:8000
+```
+
+---
+
+## DELIVERABLES
+
+```
+outputs/d3_viz/
+├── index.html      # the full D3 app
+├── nodes.json      # node data with base64 thumbnails
+└── edges.json      # filtered similarity edges
+```
+
+Do not modify any existing Phase 1 files. Report file sizes and stop.
